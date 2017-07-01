@@ -6,7 +6,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 /**
  * Created by qianjia on 2017/7/1.
  */
-@SpringBootApplication(scanBasePackages = { "me.chanjar.boot.view", "me.chanjar.boot.def" })
+@SpringBootApplication(scanBasePackages = { "me.chanjar.boot.view", "me.chanjar.controllers" })
 public class CustomErrorViewExample {
 
   public static void main(String[] args) {

@@ -6,7 +6,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 /**
  * Created by qianjia on 2017/7/1.
  */
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = "me.chanjar.controllers")
 public class DefaultExample {
 
   public static void main(String[] args) {

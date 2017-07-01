@@ -34,17 +34,25 @@
   "status": 500,
   "error": "Internal Server Error",
   "exception": "me.chanjar.exception.SomeException",
-  "message": "",
+  "message": "...",
   "trace": "...",
-  "path": "/html-exception-1"
+  "path": "..."
 }
 ```
 
-本章节的代码在[me.chanjar.boot.def][pkg-me.chanjar.boot.def]中，使用[DefaultExample][boot-DefaultExample]运行。
+本章节的代码使用[DefaultExample][boot-DefaultExample]运行。
 
-### 自定义Error页面方法1
+### 自定义Error页面
 
-前面看到了，Spring Boot针对浏览器发起的请求的error页面是`Whitelabel Error Page`，根据Spring Boot官方文档，如果想要定制这个页面只需要：
+前面看到了，Spring Boot针对浏览器发起的请求的error页面是`Whitelabel Error Page`，下面讲解如何自定义error页面。
+
+注意1：在下面的例子里我们输出了stacktrace，其实Spring Boot的默认是不会将stacktrace放到Model中的，是我们在`application.properties`添加了`server.error.include-stacktrace=always`。
+
+注意2：自定义Error页面不会影响machine客户端的输出结果
+
+#### 方法1
+
+根据Spring Boot官方文档，如果想要定制这个页面只需要：
 
 > to customize it just add a `View` that resolves to ‘error’
 
@@ -52,19 +60,14 @@
 
 本例的[CustomErrorViewConfiguration][boot-CustomErrorViewConfiguration]注册将`error`页面改到了[templates/custom-error-view/error.html][boot-custom-error-view-error-html]上。
 
+
 本章节的代码在[me.chanjar.boot.view][pkg-me.chanjar.boot.view]，使用[CustomErrorViewExample][boot-CustomErrorViewExample]运行。
 
-注意：在这个例子的error页面里我们输出了stacktrace，其实Spring Boot的默认是不会将stacktrace放到Model中的，是我们在`application.properties`里配置的：
-
-```
-server.error.include-stacktrace=always
-```
-
-### 自定义Error页面方法2
+#### 方法2
 
 方法2比方法1简单很多，在Spring官方文档中没有说明。其实只需要提供`error` `View`所对应的页面文件即可。
 
-比如在本例里，因为使用的是Thymeleaf模板引擎，所以在`/templates`这个classpath放一个自定义的`error.html`就能够自定义error页面了。
+比如在本例里，因为使用的是Thymeleaf模板引擎，所以在classpath `/templates`放一个自定义的`error.html`就能够自定义error页面了。
 
 本章节就不提供代码了，有兴趣的你可以自己尝试。
 
@@ -87,8 +90,8 @@ server.error.include-stacktrace=always
 
 
   [spring-boot-doc]: http://docs.spring.io/spring-boot/docs/1.5.4.RELEASE/reference/htmlsingle/#boot-features-error-handling
-  [def-foo]: src/main/java/me/chanjar/boot/def/FooController.java
-  [def-foo-rest]: src/main/java/me/chanjar/boot/def/FooRestController.java
+  [def-foo]: src/main/java/me/chanjar/controllers/FooController.java
+  [def-foo-rest]: src/main/java/me/chanjar/controllers/FooRestController.java
   [pkg-me.chanjar.boot.def]: src/main/java/me/chanjar/boot/def
   [boot-CustomErrorViewConfiguration]: src/main/java/me/chanjar/boot/view/CustomErrorViewConfiguration.java
   [boot-DefaultExample]: src/main/java/me/chanjar/boot/def/DefaultExample.java

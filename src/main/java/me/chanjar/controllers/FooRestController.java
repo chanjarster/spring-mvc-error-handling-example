@@ -1,4 +1,4 @@
-package me.chanjar.boot.def;
+package me.chanjar.controllers;
 
 import me.chanjar.exception.SomeException;
 import org.springframework.util.MimeTypeUtils;
