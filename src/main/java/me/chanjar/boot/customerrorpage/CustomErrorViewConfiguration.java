@@ -1,4 +1,4 @@
-package me.chanjar.boot.view;
+package me.chanjar.boot.customerrorpage;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -19,7 +19,7 @@ public class CustomErrorViewConfiguration {
 
   @Bean
   public View error() throws Exception {
-    return thymeleafViewResolver.resolveViewName("custom-error-view/error", Locale.CHINA);
+    return thymeleafViewResolver.resolveViewName("custom-error-page/error", Locale.CHINA);
   }
 
 }

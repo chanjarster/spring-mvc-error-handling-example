@@ -2,7 +2,6 @@ package me.chanjar.controllers;
 
 import me.chanjar.exception.SomeException;
 import org.springframework.stereotype.Controller;
-import org.springframework.util.MimeType;
 import org.springframework.util.MimeTypeUtils;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
