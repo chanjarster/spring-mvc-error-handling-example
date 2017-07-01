@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+  <title>Customized Error Page</title>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+  <link rel="stylesheet" type="text/css" media="all"
+        href="../../css/gtvg.css" th:href="@{/css/gtvg.css}"/>
+</head>
+
+<body>
+
+<h1>Customized Error Page</h1>
+
+timestamp: <span th:text="${timestamp}"></span><br/>
+error: <span th:text="${error}"></span><br/>
+status: <span th:text="${status}"></span><br/>
+message: <span th:text="${message}"></span><br/>
+stacktrace: <pre th:text="${trace}"></pre><br/>
+
+</body>
+
+</html>
