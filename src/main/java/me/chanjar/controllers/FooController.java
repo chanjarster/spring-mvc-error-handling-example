@@ -29,7 +29,7 @@ public class FooController {
     throw new SomeException();
   }
 
-  @RequestMapping("/return-plain-text")
+  @RequestMapping(value = "/return-text-plain", produces = MimeTypeUtils.TEXT_PLAIN_VALUE)
   @ResponseBody
   public String returnPlainText() throws SomeException {
     throw new SomeException();

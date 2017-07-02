@@ -1,6 +1,6 @@
 # Spring MVC 异常处理例子
 
-本文使用Spring Boot 1.5.2.RELEASE([doc][spring-boot-doc])
+本文使用Spring Boot 1.5.2.RELEASE([doc][spring-boot-doc])，Spring framework 4.3.7.RELEASE。
 
 ## Spring Boot Error Handling
 
@@ -17,12 +17,12 @@
 
 你可以在浏览器中依次访问以下地址：
 
-1. `http://localhost:8080/return-model-and-view`，
-1. `http://localhost:8080/return-view-name`，
-1. `http://localhost:8080/return-view`，
-1. `http://localhost:8080/return-plain-text`，
-1. `http://localhost:8080/return-json-1`，
-1. `http://localhost:8080/return-json-2`，
+1. `http://localhost:8080/return-model-and-view`
+1. `http://localhost:8080/return-view-name`
+1. `http://localhost:8080/return-view`
+1. `http://localhost:8080/return-text-plain`
+1. `http://localhost:8080/return-json-1`
+1. `http://localhost:8080/return-json-2`
 
 会发现[FooController][def-foo]和[FooRestController][def-foo-rest]返回的结果都是一个`Whitelabel Error Page`也就是html。
 
@@ -40,9 +40,39 @@
 }
 ```
 
+但是有一个URL除外：`http://localhost:8080/return-text-plain`，它不会返回任何结果，原因稍后会有说明。
+
 本章节代码在[me.chanjar.boot.def][pkg-me.chanjar.boot.def]，使用[DefaultExample][boot-DefaultExample]运行。
 
 注意：在这里我们能够得到stacktrace，其实Spring Boot的默认是不会将stacktrace放到Model中的，是我们在`application.properties`添加了`server.error.include-stacktrace=always`。
+
+#### 为何curl text/plain资源无法获得error
+
+如果你在[logback-spring.xml][logback-spring.xml]里一样配置了这么一段：
+
+```xml
+<logger name="org.springframework.web.servlet.mvc.method.annotation.ServletInvocableHandlerMethod" level="TRACE"/>
+```
+
+那么你就能在日志文件里发现这么一个异常：
+
+```
+org.springframework.web.HttpMediaTypeNotAcceptableException: Could not find acceptable representation
+...
+```
+
+要理解这个异常是怎么来的，那我们来简单分析以下Spring MVC的处理过程：
+
+1. `curl http://localhost:8080/return-text-plain`，会隐含一个请求头`Accept: */*`，这在后面匹配[@RequestMapping][RequestMapping]时有用。
+1. [RequestMappingHandlerMapping][RequestMappingHandlerMapping]根据url匹配到了(见[AbstractHandlerMethodMapping.lookupHandlerMethod#L341][AbstractHandlerMethodMapping_L341])`FooController.returnTextPlan`(`produces=text/plain`)。
+1. 方法抛出了异常，forward到`/error`。
+1. [RequestMappingHandlerMapping][RequestMappingHandlerMapping]根据url匹配到了(见[AbstractHandlerMethodMapping.lookupHandlerMethod#L341][AbstractHandlerMethodMapping_L341])[BasicErrorController][BasicErrorController]的两个方法[errorHtml][[BasicErrorController_errorHtml](`produces=text/html`)和[error][BasicErrorController_error](`produces=null`，相当于`produces=*/*`)。
+1. 因为请求头`Accept: */*`，所以会匹配[error][BasicErrorController_error]方法上(见[AbstractHandlerMethodMapping#L352][AbstractHandlerMethodMapping_L352]，[RequestMappingInfo.compareTo][RequestMappingInfo_L266]，[ProducesRequestCondition.compareTo][ProducesRequestCondition_L235])。
+1. `error`方法返回的是`ResponseEntity<Map<String, Object>>`，会被[HttpEntityMethodProcessor.handleReturnValue][HttpEntityMethodProcessor_L159]处理。
+1. [HttpEntityMethodProcessor][HttpEntityMethodProcessor]进入[AbstractMessageConverterMethodProcessor.writeWithMessageConverters][AbstractMessageConverterMethodProcessor_L163]，发现请求头`Accept: */*`，`produces=text/plain`(还记得`FooController.returnTextPlan`吗？)，那它会去找能够将`Map`转换成`String`的[HttpMessageConverter][HttpMessageConverter]，结果是找不到。
+1. [AbstractMessageConverterMethodProcessor][AbstractMessageConverterMethodProcessor]抛出[HttpMediaTypeNotAcceptableException][AbstractMessageConverterMethodProcessor_L259]。
+
+这个问题的解决办法在后面的自定义*自定义ErrorController*会有说明。
 
 ### 自定义Error页面
 
@@ -99,6 +129,12 @@
 本章节代码在[me.chanjar.boot.customerrorattributes][pkg-me.chanjar.boot.customerrorattributes]，使用[CustomErrorAttributesExample][boot-CustomErrorAttributesExample]运行。
 
 
+
+### TODO 自定义ErrorController
+
+
+ 
+
 ### TODO
 
 1. ErrorViewResolver的例子
@@ -117,6 +153,22 @@
 
 
   [spring-boot-doc]: http://docs.spring.io/spring-boot/docs/1.5.4.RELEASE/reference/htmlsingle/#boot-features-error-handling
+  [RequestMapping]: https://github.com/spring-projects/spring-framework/blob/v4.3.7.RELEASE/spring-web/src/main/java/org/springframework/web/bind/annotation/RequestMapping.java
+  [RequestMappingHandlerMapping]: https://github.com/spring-projects/spring-framework/blob/v4.3.7.RELEASE/spring-webmvc/src/main/java/org/springframework/web/servlet/mvc/method/annotation/RequestMappingHandlerMapping.java
+  [AbstractHandlerMethodMapping_L341]: https://github.com/spring-projects/spring-framework/blob/v4.3.7.RELEASE/spring-webmvc/src/main/java/org/springframework/web/servlet/handler/AbstractHandlerMethodMapping.java#L341
+  [AbstractHandlerMethodMapping_L352]: https://github.com/spring-projects/spring-framework/blob/v4.3.7.RELEASE/spring-webmvc/src/main/java/org/springframework/web/servlet/handler/AbstractHandlerMethodMapping.java#L352 
+  [BasicErrorController]: https://github.com/spring-projects/spring-boot/blob/v1.5.2.RELEASE/spring-boot-autoconfigure/src/main/java/org/springframework/boot/autoconfigure/web/BasicErrorController.java
+  [BasicErrorController_errorHtml]: https://github.com/spring-projects/spring-boot/blob/v1.5.2.RELEASE/spring-boot-autoconfigure/src/main/java/org/springframework/boot/autoconfigure/web/BasicErrorController.java#L86
+  [BasicErrorController_error]: https://github.com/spring-projects/spring-boot/blob/v1.5.2.RELEASE/spring-boot-autoconfigure/src/main/java/org/springframework/boot/autoconfigure/web/BasicErrorController.java#L98
+  [RequestMappingInfo_L266]: https://github.com/spring-projects/spring-framework/blob/v4.3.7.RELEASE/spring-webmvc/src/main/java/org/springframework/web/servlet/mvc/method/RequestMappingInfo.java#L266
+  [ProducesRequestCondition_L235]: https://github.com/spring-projects/spring-framework/blob/v4.3.7.RELEASE/spring-webmvc/src/main/java/org/springframework/web/servlet/mvc/condition/ProducesRequestCondition.java#L235
+  [HttpEntityMethodProcessor_L159]: https://github.com/spring-projects/spring-framework/blob/v4.3.7.RELEASE/spring-webmvc/src/main/java/org/springframework/web/servlet/mvc/method/annotation/HttpEntityMethodProcessor.java#L159
+  [HttpEntityMethodProcessor]: https://github.com/spring-projects/spring-framework/blob/v4.3.7.RELEASE/spring-webmvc/src/main/java/org/springframework/web/servlet/mvc/method/annotation/HttpEntityMethodProcessor.java
+  [AbstractMessageConverterMethodProcessor]: https://github.com/spring-projects/spring-framework/blob/v4.3.7.RELEASE/spring-webmvc/src/main/java/org/springframework/web/servlet/mvc/method/annotation/AbstractMessageConverterMethodProcessor.java
+  [AbstractMessageConverterMethodProcessor_L259]: https://github.com/spring-projects/spring-framework/blob/v4.3.7.RELEASE/spring-webmvc/src/main/java/org/springframework/web/servlet/mvc/method/annotation/AbstractMessageConverterMethodProcessor.java#L259
+  [AbstractMessageConverterMethodProcessor_L163]: https://github.com/spring-projects/spring-framework/blob/v4.3.7.RELEASE/spring-webmvc/src/main/java/org/springframework/web/servlet/mvc/method/annotation/AbstractMessageConverterMethodProcessor.java#L163
+  [HttpMessageConverter]: https://github.com/spring-projects/spring-framework/blob/v4.3.7.RELEASE/spring-web/src/main/java/org/springframework/http/converter/HttpMessageConverter.java
+  
   [def-foo]: src/main/java/me/chanjar/controllers/FooController.java
   [def-foo-rest]: src/main/java/me/chanjar/controllers/FooRestController.java
   
@@ -131,3 +183,5 @@
   [pkg-me.chanjar.boot.customerrorattributes]: src/main/java/me/chanjar/boot/customerrorattributes
   [boot-CustomErrorAttributes]: src/main/java/me/chanjar/boot/customerrorattributes/CustomErrorAttributes.java
   [boot-CustomErrorAttributesExample]: src/main/java/me/chanjar/boot/customerrorattributes/CustomErrorAttributesExample.java
+
+  [logback-spring.xml]: src/main/resources/logback-spring.xml
