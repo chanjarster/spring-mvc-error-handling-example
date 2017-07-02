@@ -44,7 +44,7 @@
 
 本章节代码在[me.chanjar.boot.def][pkg-me.chanjar.boot.def]，使用[DefaultExample][boot-DefaultExample]运行。
 
-注意：在这里我们能够得到stacktrace，其实Spring Boot的默认是不会将stacktrace放到Model中的，是我们在`application.properties`添加了`server.error.include-stacktrace=always`。
+注意：我们必须在`application.properties`添加`server.error.include-stacktrace=always`才能够得到stacktrace。
 
 #### 为何curl text/plain资源无法获得error
 
@@ -66,7 +66,7 @@ org.springframework.web.HttpMediaTypeNotAcceptableException: Could not find acce
 1. `curl http://localhost:8080/return-text-plain`，会隐含一个请求头`Accept: */*`，这在后面匹配[@RequestMapping][RequestMapping]时有用。
 1. [RequestMappingHandlerMapping][RequestMappingHandlerMapping]根据url匹配到了(见[AbstractHandlerMethodMapping.lookupHandlerMethod#L341][AbstractHandlerMethodMapping_L341])`FooController.returnTextPlan`(`produces=text/plain`)。
 1. 方法抛出了异常，forward到`/error`。
-1. [RequestMappingHandlerMapping][RequestMappingHandlerMapping]根据url匹配到了(见[AbstractHandlerMethodMapping.lookupHandlerMethod#L341][AbstractHandlerMethodMapping_L341])[BasicErrorController][BasicErrorController]的两个方法[errorHtml][[BasicErrorController_errorHtml](`produces=text/html`)和[error][BasicErrorController_error](`produces=null`，相当于`produces=*/*`)。
+1. [RequestMappingHandlerMapping][RequestMappingHandlerMapping]根据url匹配到了(见[AbstractHandlerMethodMapping.lookupHandlerMethod#L341][AbstractHandlerMethodMapping_L341])[BasicErrorController][BasicErrorController]的两个方法[errorHtml][BasicErrorController_errorHtml](`produces=text/html`)和[error][BasicErrorController_error](`produces=null`，相当于`produces=*/*`)。
 1. 因为请求头`Accept: */*`，所以会匹配[error][BasicErrorController_error]方法上(见[AbstractHandlerMethodMapping#L352][AbstractHandlerMethodMapping_L352]，[RequestMappingInfo.compareTo][RequestMappingInfo_L266]，[ProducesRequestCondition.compareTo][ProducesRequestCondition_L235])。
 1. `error`方法返回的是`ResponseEntity<Map<String, Object>>`，会被[HttpEntityMethodProcessor.handleReturnValue][HttpEntityMethodProcessor_L159]处理。
 1. [HttpEntityMethodProcessor][HttpEntityMethodProcessor]进入[AbstractMessageConverterMethodProcessor.writeWithMessageConverters][AbstractMessageConverterMethodProcessor_L163]，发现请求头`Accept: */*`，`produces=text/plain`(还记得`FooController.returnTextPlan`吗？)，那它会去找能够将`Map`转换成`String`的[HttpMessageConverter][HttpMessageConverter]，结果是找不到。
