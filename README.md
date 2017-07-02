@@ -64,20 +64,22 @@ org.springframework.web.HttpMediaTypeNotAcceptableException: Could not find acce
 要理解这个异常是怎么来的，那我们来简单分析以下Spring MVC的处理过程：
 
 1. `curl http://localhost:8080/return-text-plain`，会隐含一个请求头`Accept: */*`，这在后面匹配[@RequestMapping][RequestMapping]时有用。
-1. [RequestMappingHandlerMapping][RequestMappingHandlerMapping]根据url匹配到了(见[AbstractHandlerMethodMapping.lookupHandlerMethod#L341][AbstractHandlerMethodMapping_L341])`FooController.returnTextPlan`(`produces=text/plain`)。
+1. [RequestMappingHandlerMapping][RequestMappingHandlerMapping]根据url匹配到了(见[AbstractHandlerMethodMapping.lookupHandlerMethod#L341][AbstractHandlerMethodMapping_L341])``FooController.returnTextPlan``(``produces=text/plain``)。
 1. 方法抛出了异常，forward到`/error`。
-1. [RequestMappingHandlerMapping][RequestMappingHandlerMapping]根据url匹配到了(见[AbstractHandlerMethodMapping.lookupHandlerMethod#L341][AbstractHandlerMethodMapping_L341])[BasicErrorController][BasicErrorController]的两个方法[errorHtml][BasicErrorController_errorHtml](`produces=text/html`)和[error][BasicErrorController_error](`produces=null`，相当于`produces=*/*`)。
+1. [RequestMappingHandlerMapping][RequestMappingHandlerMapping]根据url匹配到了(见[AbstractHandlerMethodMapping.lookupHandlerMethod#L341][AbstractHandlerMethodMapping_L341])[BasicErrorController][BasicErrorController]的两个方法[errorHtml][BasicErrorController_errorHtml](``produces=text/html``)和[error][BasicErrorController_error](``produces=null``，相当于``produces=*/*``)。
 1. 因为请求头`Accept: */*`，所以会匹配[error][BasicErrorController_error]方法上(见[AbstractHandlerMethodMapping#L352][AbstractHandlerMethodMapping_L352]，[RequestMappingInfo.compareTo][RequestMappingInfo_L266]，[ProducesRequestCondition.compareTo][ProducesRequestCondition_L235])。
-1. `error`方法返回的是`ResponseEntity<Map<String, Object>>`，会被[HttpEntityMethodProcessor.handleReturnValue][HttpEntityMethodProcessor_L159]处理。
-1. [HttpEntityMethodProcessor][HttpEntityMethodProcessor]进入[AbstractMessageConverterMethodProcessor.writeWithMessageConverters][AbstractMessageConverterMethodProcessor_L163]，发现请求头`Accept: */*`，`produces=text/plain`(还记得`FooController.returnTextPlan`吗？)，那它会去找能够将`Map`转换成`String`的[HttpMessageConverter][HttpMessageConverter]，结果是找不到。
+1. `error`方法返回的是``ResponseEntity<Map<String, Object>>``，会被[HttpEntityMethodProcessor.handleReturnValue][HttpEntityMethodProcessor_L159]处理。
+1. [HttpEntityMethodProcessor][HttpEntityMethodProcessor]进入[AbstractMessageConverterMethodProcessor.writeWithMessageConverters][AbstractMessageConverterMethodProcessor_L163]，发现请求头``Accept: */*``，``produces=text/plain``(还记得``FooController.returnTextPlan``吗？)，那它会去找能够将`Map`转换成`String`的[HttpMessageConverter][HttpMessageConverter]，结果是找不到。
 1. [AbstractMessageConverterMethodProcessor][AbstractMessageConverterMethodProcessor]抛出[HttpMediaTypeNotAcceptableException][AbstractMessageConverterMethodProcessor_L259]。
 
-这个问题的解决办法在后面的自定义*自定义ErrorController*会有说明。
+
+那么为什么浏览器访问`http://localhost:8080/return-text-plain`就可以呢？你只需打开浏览器的开发者模式看看请求头就会发现`Accept:text/html,...`，所以在第4步会匹配到[BasicErrorController.errorHtml][BasicErrorController_errorHtml]方法，那结果自然是没有问题了。
+
+那么这个问题怎么解决呢？我会在*自定义ErrorController*里说明。
 
 ### 自定义Error页面
 
 前面看到了，Spring Boot针对浏览器发起的请求的error页面是`Whitelabel Error Page`，下面讲解如何自定义error页面。
-
 
 注意2：自定义Error页面不会影响machine客户端的输出结果
 
@@ -128,12 +130,20 @@ org.springframework.web.HttpMediaTypeNotAcceptableException: Could not find acce
 
 本章节代码在[me.chanjar.boot.customerrorattributes][pkg-me.chanjar.boot.customerrorattributes]，使用[CustomErrorAttributesExample][boot-CustomErrorAttributesExample]运行。
 
+### 自定义ErrorController
 
+在前面提到了`curl http://localhost:8080/return-text-plain`得不到error信息，解决这个问题有两个关键点：
 
-### TODO 自定义ErrorController
+1. 请求的时候指定`Accept`头，避免匹配到[BasicErrorController.error][BasicErrorController_error]方法。比如：`curl -H 'Accept: text/plain' http://localhost:8080/return-text-plain`
+1. 提供自定义的``ErrorController``。
 
+下面将如何提供自定义的``ErrorController``。按照Spring Boot官方文档的说法：
 
- 
+> To do that just extend ``BasicErrorController`` and add a public method with a ``@RequestMapping`` that has a ``produces`` attribute, and create a bean of your new type.
+
+所以我们提供了一个[CustomErrorController][boot-CustomErrorController]，并且通过[CustomErrorControllerConfiguration][boot-CustomErrorControllerConfiguration]将其注册为Bean。
+
+本章节代码在[me.chanjar.boot.customerrorcontroller][pkg-me.chanjar.boot.customerrorcontroller]，使用[CustomErrorControllerExample][boot-CustomErrorControllerExample]运行。
 
 ### TODO
 
@@ -184,4 +194,9 @@ org.springframework.web.HttpMediaTypeNotAcceptableException: Could not find acce
   [boot-CustomErrorAttributes]: src/main/java/me/chanjar/boot/customerrorattributes/CustomErrorAttributes.java
   [boot-CustomErrorAttributesExample]: src/main/java/me/chanjar/boot/customerrorattributes/CustomErrorAttributesExample.java
 
+  [pkg-me.chanjar.boot.customerrorcontroller]: src/main/java/me/chanjar/boot/customerrorcontroller
+  [boot-CustomErrorController]: src/main/java/me/chanjar/boot/customerrorcontroller/CustomErrorController.java
+  [boot-CustomErrorControllerConfiguration]: src/main/java/me/chanjar/boot/customerrorcontroller/CustomErrorControllerConfiguration.java
+  [boot-CustomErrorControllerExample]: src/main/java/me/chanjar/boot/customerrorcontroller/CustomErrorControllerExample.java
+  
   [logback-spring.xml]: src/main/resources/logback-spring.xml
