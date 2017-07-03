@@ -8,9 +8,6 @@ import org.thymeleaf.spring4.view.ThymeleafViewResolver;
 
 import java.util.Locale;
 
-/**
- * Created by qianjia on 2017/7/1.
- */
 @Configuration
 public class CustomErrorViewConfiguration {
 

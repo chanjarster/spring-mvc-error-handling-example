@@ -1,8 +1,6 @@
 package me.chanjar.exception;
 
-/**
- * Created by qianjia on 2017/7/1.
- */
+
 public class SomeException extends  Exception {
   public SomeException() {
     super();

@@ -8,9 +8,6 @@ import org.springframework.boot.context.TypeExcludeFilter;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
 
-/**
- * Created by qianjia on 2017/7/1.
- */
 @SpringBootConfiguration
 @EnableAutoConfiguration
 @ComponentScan(

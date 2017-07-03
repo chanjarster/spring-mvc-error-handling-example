@@ -8,9 +8,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.View;
 
-/**
- * Created by qianjia on 2017/7/1.
- */
+
 @Controller
 public class FooController {
 

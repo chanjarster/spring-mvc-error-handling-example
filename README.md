@@ -63,13 +63,13 @@ org.springframework.web.HttpMediaTypeNotAcceptableException: Could not find acce
 
 要理解这个异常是怎么来的，那我们来简单分析以下Spring MVC的处理过程：
 
-1. `curl http://localhost:8080/return-text-plain`，会隐含一个请求头`Accept: */*`，这在后面匹配[@RequestMapping][RequestMapping]时有用。
+1. `curl http://localhost:8080/return-text-plain`，会隐含一个请求头`Accept: */*`，会匹配到``FooController.returnTextPlain(produces=text/plain)``方法，注意：如果请求头不是``Accept: */*``或``Accept: text/plain``，那么是匹配不到``FooController.returnTextPlain``的。
 1. [RequestMappingHandlerMapping][RequestMappingHandlerMapping]根据url匹配到了(见[AbstractHandlerMethodMapping.lookupHandlerMethod#L341][AbstractHandlerMethodMapping_L341])``FooController.returnTextPlan``(``produces=text/plain``)。
 1. 方法抛出了异常，forward到`/error`。
 1. [RequestMappingHandlerMapping][RequestMappingHandlerMapping]根据url匹配到了(见[AbstractHandlerMethodMapping.lookupHandlerMethod#L341][AbstractHandlerMethodMapping_L341])[BasicErrorController][BasicErrorController]的两个方法[errorHtml][BasicErrorController_errorHtml](``produces=text/html``)和[error][BasicErrorController_error](``produces=null``，相当于``produces=*/*``)。
 1. 因为请求头`Accept: */*`，所以会匹配[error][BasicErrorController_error]方法上(见[AbstractHandlerMethodMapping#L352][AbstractHandlerMethodMapping_L352]，[RequestMappingInfo.compareTo][RequestMappingInfo_L266]，[ProducesRequestCondition.compareTo][ProducesRequestCondition_L235])。
 1. `error`方法返回的是``ResponseEntity<Map<String, Object>>``，会被[HttpEntityMethodProcessor.handleReturnValue][HttpEntityMethodProcessor_L159]处理。
-1. [HttpEntityMethodProcessor][HttpEntityMethodProcessor]进入[AbstractMessageConverterMethodProcessor.writeWithMessageConverters][AbstractMessageConverterMethodProcessor_L163]，发现请求头``Accept: */*``，``produces=text/plain``(还记得``FooController.returnTextPlan``吗？)，那它会去找能够将`Map`转换成`String`的[HttpMessageConverter][HttpMessageConverter]，结果是找不到。
+1. [HttpEntityMethodProcessor][HttpEntityMethodProcessor]进入[AbstractMessageConverterMethodProcessor.writeWithMessageConverters][AbstractMessageConverterMethodProcessor_L163]，发现请求要求``*/*``(``Accept: */*``)，而能够产生``text/plain``(``FooController.returnTextPlan produces=text/plain``)，那它会去找能够将`Map`转换成`String`的[HttpMessageConverter][HttpMessageConverter](``text/plain``代表``String``)，结果是找不到。
 1. [AbstractMessageConverterMethodProcessor][AbstractMessageConverterMethodProcessor]抛出[HttpMediaTypeNotAcceptableException][AbstractMessageConverterMethodProcessor_L259]。
 
 
@@ -145,7 +145,33 @@ org.springframework.web.HttpMediaTypeNotAcceptableException: Could not find acce
 
 本章节代码在[me.chanjar.boot.customerrorcontroller][pkg-me.chanjar.boot.customerrorcontroller]，使用[CustomErrorControllerExample][boot-CustomErrorControllerExample]运行。
 
+### ControllerAdvice定制特定异常返回结果
+
+根据Spring Boot官方文档的例子，可以使用[@ControllerAdvice][spring-ControllerAdvice]和[@ExceptionHandler][spring-ExceptionHandler]对特定异常返回特定的结果。
+
+我们在这里定义了一个新的异常：AnotherException，然后在[BarControllerAdvice][boot-BarControllerAdvice]中对SomeException和AnotherException定义了不同的[@ExceptionHandler][spring-ExceptionHandler]：
+
+* SomeException都返回到`controlleradvice/some-ex-error.html`上
+* AnotherException统统返回JSON
+
+在[BarController][boot-BarController]中，所有`*-a`都抛出``SomeException``，所有`*-b`都抛出``AnotherException``。下面是用浏览器和curl访问的结果：
+
+| url                                    | 浏览器                                                                                   | curl               |
+| -------------------------------------- |-----------------------------------------------------------------------------------------| -------------------|
+| http://localhost:8080/bar/html-a       | some-ex-error.html                                                                      | some-ex-error.html |
+| http://localhost:8080/bar/html-b       | No converter found for return value of type: class AnotherExceptionErrorMessage[AbstractMessageConverterMethodProcessor#L187][AbstractMessageConverterMethodProcessor_L187]         | error(json)        |
+| http://localhost:8080/bar/json-a       | some-ex-error.html                                                                      | some-ex-error.html |
+| http://localhost:8080/bar/json-b       | Could not find acceptable representation                                                | error(json)        |
+| http://localhost:8080/bar/text-plain-a | some-ex-error.html                                                                      | some-ex-error.html |
+| http://localhost:8080/bar/text-plain-b | Could not find acceptable representation                                                | Could not find acceptable representation |
+
+注意上方表格的``Could not find acceptable representation``错误，产生这个的原因和之前**为何curl text/plain资源无法获得error**是一样的：
+无法将[@ExceptionHandler][spring-ExceptionHandler]返回的数据转换[@RequestMapping.produces][RequestMapping_produces]所要求的格式。
+
+所以你会发现如果使用[@ExceptionHandler][spring-ExceptionHandler]，那就得自己根据请求头``Accept``的不同而输出不同的结果了，办法就是定义一个``void @ExceptionHandler``，具体见[@ExceptionHandler javadoc][spring-ExceptionHandler-javadoc]。
+
 ### TODO
+
 
 1. ErrorViewResolver的例子
 1. ErrorController
@@ -156,7 +182,7 @@ org.springframework.web.HttpMediaTypeNotAcceptableException: Could not find acce
 
 1. TODO HandlerExceptionResolver的例子
 1. TODO @ExceptionHandler的例子
-1. TODO @ControllerAdivce的例子
+1. TODO @ControllerAdvice的例子
 1. TODO 自定义Status Code的例子
 1. TODO 返回Html时的例子
 1. TODO 返回Json时的例子
@@ -177,7 +203,9 @@ org.springframework.web.HttpMediaTypeNotAcceptableException: Could not find acce
   [AbstractMessageConverterMethodProcessor]: https://github.com/spring-projects/spring-framework/blob/v4.3.7.RELEASE/spring-webmvc/src/main/java/org/springframework/web/servlet/mvc/method/annotation/AbstractMessageConverterMethodProcessor.java
   [AbstractMessageConverterMethodProcessor_L259]: https://github.com/spring-projects/spring-framework/blob/v4.3.7.RELEASE/spring-webmvc/src/main/java/org/springframework/web/servlet/mvc/method/annotation/AbstractMessageConverterMethodProcessor.java#L259
   [AbstractMessageConverterMethodProcessor_L163]: https://github.com/spring-projects/spring-framework/blob/v4.3.7.RELEASE/spring-webmvc/src/main/java/org/springframework/web/servlet/mvc/method/annotation/AbstractMessageConverterMethodProcessor.java#L163
+  [AbstractMessageConverterMethodProcessor_L187]: https://github.com/spring-projects/spring-framework/blob/v4.3.7.RELEASE/spring-webmvc/src/main/java/org/springframework/web/servlet/mvc/method/annotation/AbstractMessageConverterMethodProcessor.java#L187
   [HttpMessageConverter]: https://github.com/spring-projects/spring-framework/blob/v4.3.7.RELEASE/spring-web/src/main/java/org/springframework/http/converter/HttpMessageConverter.java
+  [RequestMapping_produces]: https://github.com/spring-projects/spring-framework/blob/master/spring-web/src/main/java/org/springframework/web/bind/annotation/RequestMapping.java#L396
   
   [def-foo]: src/main/java/me/chanjar/controllers/FooController.java
   [def-foo-rest]: src/main/java/me/chanjar/controllers/FooRestController.java
@@ -199,4 +227,12 @@ org.springframework.web.HttpMediaTypeNotAcceptableException: Could not find acce
   [boot-CustomErrorControllerConfiguration]: src/main/java/me/chanjar/boot/customerrorcontroller/CustomErrorControllerConfiguration.java
   [boot-CustomErrorControllerExample]: src/main/java/me/chanjar/boot/customerrorcontroller/CustomErrorControllerExample.java
   
+  [pkg-me.chanjar.boot.controlleradvice]: src/main/java/me/chanjar/boot/controlleradvice/
+  [boot-BarController]: src/main/java/me/chanjar/boot/controlleradvice/BarController.java
+  [boot-BarControllerAdvice]: src/main/java/me/chanjar/boot/controlleradvice/BarControllerAdvice.java
+  
   [logback-spring.xml]: src/main/resources/logback-spring.xml
+  
+  [spring-ExceptionHandler]: http://docs.spring.io/spring/docs/current/spring-framework-reference/htmlsingle/#mvc-ann-exceptionhandler
+  [spring-ControllerAdvice]: http://docs.spring.io/spring/docs/current/spring-framework-reference/htmlsingle/#mvc-ann-controller-advice
+  [spring-ExceptionHandler-javadoc]: https://docs.spring.io/spring/docs/4.3.7.RELEASE/javadoc-api/org/springframework/web/bind/annotation/ExceptionHandler.html
