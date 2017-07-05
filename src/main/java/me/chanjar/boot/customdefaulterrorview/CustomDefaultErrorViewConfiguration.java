@@ -1,4 +1,4 @@
-package me.chanjar.boot.customerrorpage;
+package me.chanjar.boot.customdefaulterrorview;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -9,7 +9,7 @@ import org.thymeleaf.spring4.view.ThymeleafViewResolver;
 import java.util.Locale;
 
 @Configuration
-public class CustomErrorViewConfiguration {
+public class CustomDefaultErrorViewConfiguration {
 
   @Autowired
   private ThymeleafViewResolver thymeleafViewResolver;
