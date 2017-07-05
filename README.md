@@ -232,12 +232,24 @@ Spring MVC处理异常的地方在[DispatcherServlet.processHandlerException][Di
 ``Exception403``和``Exception406``都有被[ResponseStatusExceptionResolver][spring-ResponseStatusExceptionResolver-javadoc]处理了，而``SomeException``没有任何Handler处理，这样``DispatcherServlet``就会将这个异常往上抛至到容器处理（见[DispatcherServlet#L1243][DispatcherServlet_L1243]），以Tomcat为例，它在[StandardHostValve#L317][StandardHostValve_L317]、[StandardHostValve#L345][StandardHostValve_L345]会将Status Code设置成500，然后跳转到`/error`，结果就是[BasicErrorController][BasicErrorController]处理时就看到Status Code=500，然后按照500去找error page找不到，就只能返回White error page了。
 
 
+实际上，从Request的attributes角度来看，交给[BasicErrorController][BasicErrorController]处理时，和容器自己处理时，有几个相关属性的内部情况时这样的：
+
+| Attribute name                  | When throw up to Tomcat | Handled by HandlerExceptionResolver  |
+|---------------------------------|-------------------------|--------------------------------------|
+| `DefaultErrorAttributes.ERROR`  | Has value               | Has Value                            |
+| `DispatcherServlet.EXCEPTION`   | No value                | Has Value                            |
+| `javax.servlet.error.exception` | Has value               | No Value                             |
+
+PS. `DefaultErrorAttributes.ERROR` = `org.springframework.boot.autoconfigure.web.DefaultErrorAttributes.ERROR`
+PS. `DispatcherServlet.EXCEPTION` = `org.springframework.web.servlet.DispatcherServlet.EXCEPTION`
+
 解决办法有两个：
 
 1. 给``SomeException``添加``@ResponseStatus``，但是这个方法有两个局限：
-  1. 如果这个异常不是你能修改的，比如在第三方的Jar包里
-  1. 如果``@ResponseStatus``使用[HttpStatus][HttpStatus-javadoc]作为参数，但是这个枚举定义的Status Code数量有限
+    1. 如果这个异常不是你能修改的，比如在第三方的Jar包里
+    1. 如果``@ResponseStatus``使用[HttpStatus][HttpStatus-javadoc]作为参数，但是这个枚举定义的Status Code数量有限
 1. 使用[@ExceptionHandler][spring-ExceptionHandler]，不过得注意自己决定view以及status code
+
 
 第二种解决办法的例子`loo/error-601`，对应的代码：
 
@@ -260,17 +272,19 @@ String handleAnotherException(HttpServletRequest request, HttpServletResponse re
 总结：
 
 1. 没有被[HandlerExceptionResolver][spring-HandlerExceptionResolver]resolve到的异常会交给容器处理。已知的实现有（按照顺序）：
-  1. [DefaultErrorAttributes][spring-DefaultErrorAttributes-javadoc]，只负责把异常记录在Request attributes中，name是`org.springframework.boot.autoconfigure.web.DefaultErrorAttributes.ERROR`
-  1. [ExceptionHandlerExceptionResolver][spring-ExceptionHandlerExceptionResolver-javadoc]，根据[@ExceptionHandler][spring-ExceptionHandler] resolve
-  1. [ResponseStatusExceptionResolver][spring-ResponseStatusExceptionResolver-javadoc]，根据[@ResponseStatus][spring-ResponseStatus-javadoc] resolve
-  1. [DefaultHandlerExceptionResolver][spring-DefaultHandlerExceptionResolver-javadoc]，负责处理Spring MVC标准异常
+    1. [DefaultErrorAttributes][spring-DefaultErrorAttributes-javadoc]，只负责把异常记录在Request attributes中，name是`org.springframework.boot.autoconfigure.web.DefaultErrorAttributes.ERROR`
+    1. [ExceptionHandlerExceptionResolver][spring-ExceptionHandlerExceptionResolver-javadoc]，根据[@ExceptionHandler][spring-ExceptionHandler] resolve
+    1. [ResponseStatusExceptionResolver][spring-ResponseStatusExceptionResolver-javadoc]，根据[@ResponseStatus][spring-ResponseStatus-javadoc] resolve
+    1. [DefaultHandlerExceptionResolver][spring-DefaultHandlerExceptionResolver-javadoc]，负责处理Spring MVC标准异常
 1. [@ResponseStatus][spring-ResponseStatus-javadoc]用来规定异常对应的Status Code，其他异常的Status Code由容器决定，在Tomcat里都认定为500（[StandardHostValve#L317][StandardHostValve_L317]、[StandardHostValve#L345][StandardHostValve_L345]）
 1. [@ExceptionHandler][spring-ExceptionHandler]处理的异常不会经过[BasicErrorController][BasicErrorController]，需要自己决定如何返回页面，并且设置Status Code（如果不设置就是200）
 1. [BasicErrorController][BasicErrorController]会尝试根据Status Code找error page，找不到的话就用Whitelabel error page
 
 本章节代码在[me.chanjar.boot.customstatuserrorpage][pkg-me.chanjar.boot.customstatuserrorpage]，使用[CustomStatusErrorPageExample][boot-CustomStatusErrorPageExample]运行。
 
-1. ErrorViewResolver的例子
+### 利用ErrorViewResolver来定制错误页面
+
+前面讲到[BasicErrorController][BasicErrorController]会根据Status Code
 
 ## Spring MVC Error Handling
 
