@@ -1,4 +1,4 @@
-# Spring Boot & Spring MVC 自定义异常的方法
+# Spring Boot & Spring MVC 异常处理的N种方法
 
 参考文档：
 
