@@ -1,4 +1,4 @@
-# Spring MVC 异常处理例子
+# Spring Boot & Spring MVC 自定义异常的方法
 
 参考文档：
 
@@ -6,9 +6,8 @@
 * Spring framework 4.3.9.RELEASE [Documentation][spring-mvc-doc]
 * [Exception Handling in Spring MVC][blog-exception-handling-in-spring-mvc]
 
-## Spring Boot Error Handling
 
-### 默认行为
+## 默认行为
 
 根据Spring Boot官方文档的说法：
 
@@ -50,7 +49,7 @@
 
 注意：我们必须在`application.properties`添加`server.error.include-stacktrace=always`才能够得到stacktrace。
 
-#### 为何curl text/plain资源无法获得error
+### 为何curl text/plain资源无法获得error
 
 如果你在[logback-spring.xml][logback-spring.xml]里一样配置了这么一段：
 
@@ -81,13 +80,13 @@ org.springframework.web.HttpMediaTypeNotAcceptableException: Could not find acce
 
 那么这个问题怎么解决呢？我会在*自定义ErrorController*里说明。
 
-### 自定义Error页面
+## 自定义Error页面
 
 前面看到了，Spring Boot针对浏览器发起的请求的error页面是`Whitelabel Error Page`，下面讲解如何自定义error页面。
 
 注意2：自定义Error页面不会影响machine客户端的输出结果
 
-#### 方法1
+### 方法1
 
 根据Spring Boot官方文档，如果想要定制这个页面只需要：
 
@@ -99,7 +98,7 @@ org.springframework.web.HttpMediaTypeNotAcceptableException: Could not find acce
 
 本章节代码在[me.chanjar.boot.customdefaulterrorview][pkg-me.chanjar.boot.customdefaulterrorview]，使用[CustomDefaultErrorViewExample][boot-CustomDefaultErrorViewExample]运行。
 
-#### 方法2
+### 方法2
 
 方法2比方法1简单很多，在Spring官方文档中没有说明。其实只需要提供`error` `View`所对应的页面文件即可。
 
@@ -107,7 +106,7 @@ org.springframework.web.HttpMediaTypeNotAcceptableException: Could not find acce
 
 本章节就不提供代码了，有兴趣的你可以自己尝试。
 
-### 自定义Error属性
+## 自定义Error属性
 
 前面看到了不论error页面还是error json，能够得到的属性就只有：timestamp、status、error、exception、message、trace、path。
 
@@ -115,7 +114,7 @@ org.springframework.web.HttpMediaTypeNotAcceptableException: Could not find acce
 
 > simply add a bean of type `ErrorAttributes` to use the existing mechanism but replace the contents
 
-在`ErrorMvcAutoConfiguration.errorAttributes`提供了[DefaultErrorAttributes][spring-DefaultErrorAttributes-javadoc]，我们也可以参照这个提供一个自己的[CustomErrorAttributes][boot-CustomErrorAttributes]覆盖到它。
+在`ErrorMvcAutoConfiguration.errorAttributes`提供了[DefaultErrorAttributes][spring-DefaultErrorAttributes-javadoc]，我们也可以参照这个提供一个自己的[CustomErrorAttributes][boot-CustomErrorAttributes]覆盖掉它。
 
 如果使用curl访问相关地址可以看到，返回的json里的出了修改过的属性，还有添加的属性：
 
@@ -134,7 +133,7 @@ org.springframework.web.HttpMediaTypeNotAcceptableException: Could not find acce
 
 本章节代码在[me.chanjar.boot.customerrorattributes][pkg-me.chanjar.boot.customerrorattributes]，使用[CustomErrorAttributesExample][boot-CustomErrorAttributesExample]运行。
 
-### 自定义ErrorController
+## 自定义ErrorController
 
 在前面提到了`curl http://localhost:8080/return-text-plain`得不到error信息，解决这个问题有两个关键点：
 
@@ -149,7 +148,7 @@ org.springframework.web.HttpMediaTypeNotAcceptableException: Could not find acce
 
 本章节代码在[me.chanjar.boot.customerrorcontroller][pkg-me.chanjar.boot.customerrorcontroller]，使用[CustomErrorControllerExample][boot-CustomErrorControllerExample]运行。
 
-### ControllerAdvice定制特定异常返回结果
+## ControllerAdvice定制特定异常返回结果
 
 根据Spring Boot官方文档的例子，可以使用[@ControllerAdvice][spring-ControllerAdvice]和[@ExceptionHandler][spring-ExceptionHandler]对特定异常返回特定的结果。
 
@@ -174,7 +173,7 @@ org.springframework.web.HttpMediaTypeNotAcceptableException: Could not find acce
 
 所以你会发现如果使用[@ExceptionHandler][spring-ExceptionHandler]，那就得自己根据请求头``Accept``的不同而输出不同的结果了，办法就是定义一个``void @ExceptionHandler``，具体见[@ExceptionHandler javadoc][spring-ExceptionHandler-javadoc]。
 
-### 定制不同Status Code的错误页面
+## 定制不同Status Code的错误页面
 
 Spring Boot 官方文档提供了一种简单的根据不同Status Code跳到不同error页面的方法，见[这里][spring-boot-status-code-error-page]。
 
@@ -282,7 +281,7 @@ String handleAnotherException(HttpServletRequest request, HttpServletResponse re
 
 本章节代码在[me.chanjar.boot.customstatuserrorpage][pkg-me.chanjar.boot.customstatuserrorpage]，使用[CustomStatusErrorPageExample][boot-CustomStatusErrorPageExample]运行。
 
-### 利用ErrorViewResolver来定制错误页面
+## 利用ErrorViewResolver来定制错误页面
 
 前面讲到[BasicErrorController][BasicErrorController]会根据Status Code来跳转对应的error页面，其实这个工作是由[DefaultErrorViewResolver][DefaultErrorViewResolver-javadoc]完成的。
 
@@ -305,14 +304,28 @@ public class SomeExceptionErrorViewResolver implements ErrorViewResolver {
 本章节代码在[me.chanjar.boot.customerrorviewresolver][pkg-me.chanjar.boot.customerrorviewresolver]，使用[CustomErrorViewResolverExample][boot-CustomErrorViewResolverExample]运行。
 
 
-## Spring MVC Error Handling
+## @ExceptionHandler 和 @ControllerAdvice
 
-1. TODO HandlerExceptionResolver的例子
-1. TODO @ExceptionHandler的例子
-1. TODO @ControllerAdvice的例子
-1. TODO 自定义Status Code的例子
-1. TODO 返回Html时的例子
-1. TODO 返回Json时的例子
+前面的例子中已经有了对[@ControllerAdvice][spring-ControllerAdvice]和[@ExceptionHandler][spring-ExceptionHandler]的使用，这里只是在做一些补充说明：
+
+1. ``@ExceptionHandler``配合``@ControllerAdvice``用时，能够应用到所有被``@ControllerAdvice``切到的Controller
+2. ``@ExceptionHandler``在Controller里的时候，就只会对那个Controller生效
+
+
+## 附录I
+
+下表列出哪些特性是Spring Boot的，哪些是Spring MVC的：
+
+| Feature                    | Spring Boot          | Spring MVC         |
+|----------------------------|----------------------|--------------------|
+| BasicErrorController       | Yes                  |                    |
+| ErrorAttributes            | Yes                  |                    |
+| ErrorViewResolver          | Yes                  |                    |
+| @ControllerAdvice          |                      | Yes                |
+| @ExceptionHandler          |                      | Yes                |
+| @ResponseStatus            |                      | Yes                |
+| HandlerExceptionResolver   |                      | Yes                |
+
 
   [spring-boot-doc]: http://docs.spring.io/spring-boot/docs/1.5.4.RELEASE/reference/htmlsingle/#boot-features-error-handling
   [spring-mvc-doc]: http://docs.spring.io/spring/docs/4.3.9.RELEASE/spring-framework-reference/htmlsingle/#mvc-exceptionhandlers
