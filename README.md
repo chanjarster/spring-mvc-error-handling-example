@@ -284,7 +284,26 @@ String handleAnotherException(HttpServletRequest request, HttpServletResponse re
 
 ### 利用ErrorViewResolver来定制错误页面
 
-前面讲到[BasicErrorController][BasicErrorController]会根据Status Code
+前面讲到[BasicErrorController][BasicErrorController]会根据Status Code来跳转对应的error页面，其实这个工作是由[DefaultErrorViewResolver][DefaultErrorViewResolver-javadoc]完成的。
+
+实际上我们也可以提供自己的[ErrorViewResolver][ErrorViewResolver-javadoc]来定制特定异常的error页面。
+
+```java
+@Component
+public class SomeExceptionErrorViewResolver implements ErrorViewResolver {
+
+  @Override
+  public ModelAndView resolveErrorView(HttpServletRequest request, HttpStatus status, Map<String, Object> model) {
+    return new ModelAndView("custom-error-view-resolver/some-ex-error", model);
+  }
+
+}
+```
+
+不过需要注意的是，无法通过[ErrorViewResolver][ErrorViewResolver-javadoc]设定Status Code，Status Code由[@ResponseStatus][spring-ResponseStatus-javadoc]或者容器决定（Tomcat里一律是500）。
+
+本章节代码在[me.chanjar.boot.customerrorviewresolver][pkg-me.chanjar.boot.customerrorviewresolver]，使用[CustomErrorViewResolverExample][boot-CustomErrorViewResolverExample]运行。
+
 
 ## Spring MVC Error Handling
 
@@ -302,9 +321,9 @@ String handleAnotherException(HttpServletRequest request, HttpServletResponse re
   [RequestMappingHandlerMapping]: https://github.com/spring-projects/spring-framework/blob/v4.3.9.RELEASE/spring-webmvc/src/main/java/org/springframework/web/servlet/mvc/method/annotation/RequestMappingHandlerMapping.java
   [AbstractHandlerMethodMapping_L341]: https://github.com/spring-projects/spring-framework/blob/v4.3.9.RELEASE/spring-webmvc/src/main/java/org/springframework/web/servlet/handler/AbstractHandlerMethodMapping.java#L341
   [AbstractHandlerMethodMapping_L352]: https://github.com/spring-projects/spring-framework/blob/v4.3.9.RELEASE/spring-webmvc/src/main/java/org/springframework/web/servlet/handler/AbstractHandlerMethodMapping.java#L352 
-  [BasicErrorController]: https://github.com/spring-projects/spring-boot/blob/v1.5.2.RELEASE/spring-boot-autoconfigure/src/main/java/org/springframework/boot/autoconfigure/web/BasicErrorController.java
-  [BasicErrorController_errorHtml]: https://github.com/spring-projects/spring-boot/blob/v1.5.2.RELEASE/spring-boot-autoconfigure/src/main/java/org/springframework/boot/autoconfigure/web/BasicErrorController.java#L86
-  [BasicErrorController_error]: https://github.com/spring-projects/spring-boot/blob/v1.5.2.RELEASE/spring-boot-autoconfigure/src/main/java/org/springframework/boot/autoconfigure/web/BasicErrorController.java#L98
+  [BasicErrorController]: https://github.com/spring-projects/spring-boot/blob/v1.5.4.RELEASE/spring-boot-autoconfigure/src/main/java/org/springframework/boot/autoconfigure/web/BasicErrorController.java
+  [BasicErrorController_errorHtml]: https://github.com/spring-projects/spring-boot/blob/v1.5.4.RELEASE/spring-boot-autoconfigure/src/main/java/org/springframework/boot/autoconfigure/web/BasicErrorController.java#L86
+  [BasicErrorController_error]: https://github.com/spring-projects/spring-boot/blob/v1.5.4.RELEASE/spring-boot-autoconfigure/src/main/java/org/springframework/boot/autoconfigure/web/BasicErrorController.java#L98
   [RequestMappingInfo_L266]: https://github.com/spring-projects/spring-framework/blob/v4.3.9.RELEASE/spring-webmvc/src/main/java/org/springframework/web/servlet/mvc/method/RequestMappingInfo.java#L266
   [ProducesRequestCondition_L235]: https://github.com/spring-projects/spring-framework/blob/v4.3.9.RELEASE/spring-webmvc/src/main/java/org/springframework/web/servlet/mvc/condition/ProducesRequestCondition.java#L235
   [HttpEntityMethodProcessor_L159]: https://github.com/spring-projects/spring-framework/blob/v4.3.9.RELEASE/spring-webmvc/src/main/java/org/springframework/web/servlet/mvc/method/annotation/HttpEntityMethodProcessor.java#L159
@@ -347,6 +366,9 @@ String handleAnotherException(HttpServletRequest request, HttpServletResponse re
   [pkg-me.chanjar.boot.customstatuserrorpage]: src/main/java/me/chanjar/boot/customstatuserrorpage
   [boot-CustomStatusErrorPageExample]: src/main/java/me/chanjar/boot/customstatuserrorpage/CustomStatusErrorPageExample.java
   
+  [pkg-me.chanjar.boot.customerrorviewresolver]: src/main/java/me/chanjar/boot/customerrorviewresolver
+  [boot-CustomErrorViewResolverExample]: src/main/java/me/chanjar/boot/customerrorviewresolver/CustomErrorViewResolverExample.java
+  
   [spring-ExceptionHandler]: http://docs.spring.io/spring/docs/4.3.9.RELEASE/spring-framework-reference/htmlsingle/#mvc-ann-exceptionhandler
   [spring-ControllerAdvice]: http://docs.spring.io/spring/docs/4.3.9.RELEASE/spring-framework-reference/htmlsingle/#mvc-ann-controller-advice
   [spring-ExceptionHandler-javadoc]: https://docs.spring.io/spring/docs/4.3.9.RELEASE/javadoc-api/org/springframework/web/bind/annotation/ExceptionHandler.html
@@ -362,3 +384,5 @@ String handleAnotherException(HttpServletRequest request, HttpServletResponse re
   [DispatcherServlet_L1216]: https://github.com/spring-projects/spring-framework/blob/v4.3.9.RELEASE/spring-webmvc/src/main/java/org/springframework/web/servlet/DispatcherServlet.java#L1216
   [DispatcherServlet_L1243]: https://github.com/spring-projects/spring-framework/blob/v4.3.9.RELEASE/spring-webmvc/src/main/java/org/springframework/web/servlet/DispatcherServlet.java#L1243
   [HttpStatus-javadoc]: https://docs.spring.io/spring/docs/4.3.9.RELEASE/javadoc-api/org/springframework/http/HttpStatus.html
+  [DefaultErrorViewResolver-javadoc]: http://docs.spring.io/spring-boot/docs/1.5.4.RELEASE/api/org/springframework/boot/autoconfigure/web/DefaultErrorViewResolver.html
+  [ErrorViewResolver-javadoc]: http://docs.spring.io/spring-boot/docs/1.5.4.RELEASE/api/org/springframework/boot/autoconfigure/web/ErrorViewResolver.html
