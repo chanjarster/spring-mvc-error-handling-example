@@ -168,8 +168,7 @@ org.springframework.web.HttpMediaTypeNotAcceptableException: Could not find acce
 | http://localhost:8080/bar/text-plain-a | some-ex-error.html                                                                      | some-ex-error.html |
 | http://localhost:8080/bar/text-plain-b | Could not find acceptable representation                                                | Could not find acceptable representation |
 
-注意上方表格的``Could not find acceptable representation``错误，产生这个的原因和之前**为何curl text/plain资源无法获得error**是一样的：
-无法将[@ExceptionHandler][spring-ExceptionHandler]返回的数据转换[@RequestMapping.produces][RequestMapping_produces]所要求的格式。
+注意上方表格的``Could not find acceptable representation``错误，产生这个的原因和之前**为何curl text/plain资源无法获得error**是一样的：无法将[@ExceptionHandler][spring-ExceptionHandler]返回的数据转换[@RequestMapping.produces][RequestMapping_produces]所要求的格式。
 
 所以你会发现如果使用[@ExceptionHandler][spring-ExceptionHandler]，那就得自己根据请求头``Accept``的不同而输出不同的结果了，办法就是定义一个``void @ExceptionHandler``，具体见[@ExceptionHandler javadoc][spring-ExceptionHandler-javadoc]。
 
