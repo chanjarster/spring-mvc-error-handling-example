@@ -15,9 +15,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
-/**
- * Created by qianjia on 2017/7/5.
- */
 @Controller
 @RequestMapping("/loo")
 public class LooController {

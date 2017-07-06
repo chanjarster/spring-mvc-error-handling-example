@@ -8,9 +8,6 @@ import org.springframework.web.servlet.ModelAndView;
 import javax.servlet.http.HttpServletRequest;
 import java.util.Map;
 
-/**
- * Created by qianjia on 2017/7/5.
- */
 @Component
 public class SomeExceptionErrorViewResolver implements ErrorViewResolver {
 
