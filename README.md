@@ -239,6 +239,7 @@ Spring MVC处理异常的地方在[DispatcherServlet.processHandlerException][Di
 | `javax.servlet.error.exception` | Has value               | No Value                             |
 
 PS. `DefaultErrorAttributes.ERROR` = `org.springframework.boot.autoconfigure.web.DefaultErrorAttributes.ERROR`
+
 PS. `DispatcherServlet.EXCEPTION` = `org.springframework.web.servlet.DispatcherServlet.EXCEPTION`
 
 解决办法有两个：
