@@ -20,12 +20,12 @@
 
 你可以在浏览器中依次访问以下地址：
 
-1. `http://localhost:8080/return-model-and-view`
-1. `http://localhost:8080/return-view-name`
-1. `http://localhost:8080/return-view`
-1. `http://localhost:8080/return-text-plain`
-1. `http://localhost:8080/return-json-1`
-1. `http://localhost:8080/return-json-2`
+1. http://localhost:8080/return-model-and-view
+1. http://localhost:8080/return-view-name
+1. http://localhost:8080/return-view
+1. http://localhost:8080/return-text-plain
+1. http://localhost:8080/return-json-1
+1. http://localhost:8080/return-json-2
 
 会发现[FooController][def-foo]和[FooRestController][def-foo-rest]返回的结果都是一个`Whitelabel Error Page`也就是html。
 
@@ -49,7 +49,15 @@
 
 注意：我们必须在`application.properties`添加`server.error.include-stacktrace=always`才能够得到stacktrace。
 
-### 为何curl text/plain资源无法获得error
+### Spring MVC处理请求的总体流程
+
+![总体流程](doc/Spring MVC RequestMapping及异常处理流程/0 总体流程.png)
+
+### 分析为何浏览器访问都`Whitelabel Error Page`
+
+![浏览器访问](doc/Spring MVC RequestMapping及异常处理流程/1.1 默认行为-浏览器.png)
+
+### 分析为何curl text/plain资源却没有返回结果
 
 如果你在[logback-spring.xml][logback-spring.xml]里一样配置了这么一段：
 
@@ -60,23 +68,19 @@
 那么你就能在日志文件里发现这么一个异常：
 
 ```
+... TRACE 13387 --- [nio-8080-exec-2] .w.s.m.m.a.ServletInvocableHandlerMethod : Invoking 'org.springframework.boot.autoconfigure.web.BasicErrorController.error' with arguments [org.apache.catalina.core.ApplicationHttpRequest@1408b81]
+... TRACE 13387 --- [nio-8080-exec-2] .w.s.m.m.a.ServletInvocableHandlerMethod : Method [org.springframework.boot.autoconfigure.web.BasicErrorController.error] returned [<500 Internal Server Error,{timestamp=Thu Nov 09 13:20:15 CST 2017, status=500, error=Internal Server Error, exception=me.chanjar.exception.SomeException, message=No message available, trace=..., path=/return-text-plain, {}>]
+... TRACE 13387 --- [nio-8080-exec-2] .w.s.m.m.a.ServletInvocableHandlerMethod : Error handling return value [type=org.springframework.http.ResponseEntity] [value=<500 Internal Server Error,{timestamp=Thu Nov 09 13:20:15 CST 2017, status=500, error=Internal Server Error, exception=me.chanjar.exception.SomeException, message=No message available, trace=..., path=/return-text-plain, {}>]
+HandlerMethod details: 
+Controller [org.springframework.boot.autoconfigure.web.BasicErrorController]
+Method [public org.springframework.http.ResponseEntity<java.util.Map<java.lang.String, java.lang.Object>> org.springframework.boot.autoconfigure.web.BasicErrorController.error(javax.servlet.http.HttpServletRequest)]
 org.springframework.web.HttpMediaTypeNotAcceptableException: Could not find acceptable representation
 ...
 ```
 
 要理解这个异常是怎么来的，那我们来简单分析以下Spring MVC的处理过程：
 
-1. `curl http://localhost:8080/return-text-plain`，会隐含一个请求头`Accept: */*`，会匹配到``FooController.returnTextPlain(produces=text/plain)``方法，注意：如果请求头不是``Accept: */*``或``Accept: text/plain``，那么是匹配不到``FooController.returnTextPlain``的。
-1. [RequestMappingHandlerMapping][RequestMappingHandlerMapping]根据url匹配到了(见[AbstractHandlerMethodMapping.lookupHandlerMethod#L341][AbstractHandlerMethodMapping_L341])``FooController.returnTextPlan``(``produces=text/plain``)。
-1. 方法抛出了异常，forward到`/error`。
-1. [RequestMappingHandlerMapping][RequestMappingHandlerMapping]根据url匹配到了(见[AbstractHandlerMethodMapping.lookupHandlerMethod#L341][AbstractHandlerMethodMapping_L341])[BasicErrorController][BasicErrorController]的两个方法[errorHtml][BasicErrorController_errorHtml](``produces=text/html``)和[error][BasicErrorController_error](``produces=null``，相当于``produces=*/*``)。
-1. 因为请求头`Accept: */*`，所以会匹配[error][BasicErrorController_error]方法上(见[AbstractHandlerMethodMapping#L352][AbstractHandlerMethodMapping_L352]，[RequestMappingInfo.compareTo][RequestMappingInfo_L266]，[ProducesRequestCondition.compareTo][ProducesRequestCondition_L235])。
-1. `error`方法返回的是``ResponseEntity<Map<String, Object>>``，会被[HttpEntityMethodProcessor.handleReturnValue][HttpEntityMethodProcessor_L159]处理。
-1. [HttpEntityMethodProcessor][HttpEntityMethodProcessor]进入[AbstractMessageConverterMethodProcessor.writeWithMessageConverters][AbstractMessageConverterMethodProcessor_L163]，发现请求要求``*/*``(``Accept: */*``)，而能够产生``text/plain``(``FooController.returnTextPlan produces=text/plain``)，那它会去找能够将`Map`转换成`String`的[HttpMessageConverter][HttpMessageConverter](``text/plain``代表``String``)，结果是找不到。
-1. [AbstractMessageConverterMethodProcessor][AbstractMessageConverterMethodProcessor]抛出[HttpMediaTypeNotAcceptableException][AbstractMessageConverterMethodProcessor_L259]。
-
-
-那么为什么浏览器访问`http://localhost:8080/return-text-plain`就可以呢？你只需打开浏览器的开发者模式看看请求头就会发现`Accept:text/html,...`，所以在第4步会匹配到[BasicErrorController.errorHtml][BasicErrorController_errorHtml]方法，那结果自然是没有问题了。
+![curl访问](doc/Spring MVC RequestMapping及异常处理流程/1.2 默认行为-curl.png)
 
 那么这个问题怎么解决呢？我会在*自定义ErrorController*里说明。
 
@@ -138,7 +142,9 @@ org.springframework.web.HttpMediaTypeNotAcceptableException: Could not find acce
 在前面提到了`curl http://localhost:8080/return-text-plain`得不到error信息，解决这个问题有两个关键点：
 
 1. 请求的时候指定`Accept`头，避免匹配到[BasicErrorController.error][BasicErrorController_error]方法。比如：`curl -H 'Accept: text/plain' http://localhost:8080/return-text-plain`
-1. 提供自定义的``ErrorController``。
+1. 提供自定义的``ErrorController``提供一个`path=/error procudes=text/plain`的方法。
+
+其实还有另一种方式：提供一个Object->String转换的HttpMessageConverter，这个方法本文不展开。
 
 下面将如何提供自定义的``ErrorController``。按照Spring Boot官方文档的说法：
 
@@ -155,20 +161,36 @@ org.springframework.web.HttpMediaTypeNotAcceptableException: Could not find acce
 我们在这里定义了一个新的异常：AnotherException，然后在[BarControllerAdvice][boot-BarControllerAdvice]中对SomeException和AnotherException定义了不同的[@ExceptionHandler][spring-ExceptionHandler]：
 
 * SomeException都返回到`controlleradvice/some-ex-error.html`上
-* AnotherException统统返回JSON
+* AnotherException统统返回`ResponseEntity`
 
 在[BarController][boot-BarController]中，所有`*-a`都抛出``SomeException``，所有`*-b`都抛出``AnotherException``。下面是用浏览器和curl访问的结果：
 
-| url                                    | Browser                                                                                 | curl               |
-| -------------------------------------- |-----------------------------------------------------------------------------------------| -------------------|
-| http://localhost:8080/bar/html-a       | some-ex-error.html                                                                      | some-ex-error.html |
-| http://localhost:8080/bar/html-b       | No converter found for return value of type: class AnotherExceptionErrorMessage[AbstractMessageConverterMethodProcessor#L187][AbstractMessageConverterMethodProcessor_L187]         | error(json)        |
-| http://localhost:8080/bar/json-a       | some-ex-error.html                                                                      | some-ex-error.html |
-| http://localhost:8080/bar/json-b       | Could not find acceptable representation                                                | error(json)        |
-| http://localhost:8080/bar/text-plain-a | some-ex-error.html                                                                      | some-ex-error.html |
-| http://localhost:8080/bar/text-plain-b | Could not find acceptable representation                                                | Could not find acceptable representation |
+| url                                    | Browser                                  | curl               |
+| -------------------------------------- |------------------------------------------| -------------------|
+| http://localhost:8080/bar/html-a       | some-ex-error.html                       | some-ex-error.html |
+| http://localhost:8080/bar/html-b       | error(json)                              | error(json)        |
+| http://localhost:8080/bar/json-a       | some-ex-error.html                       | some-ex-error.html |
+| http://localhost:8080/bar/json-b       | error(json)                              | error(json)        |
+| http://localhost:8080/bar/text-plain-a | some-ex-error.html                       | some-ex-error.html |
+| http://localhost:8080/bar/text-plain-b | Could not find acceptable representation(White Error Page) | Could not find acceptable representation(无输出) |
 
-注意上方表格的``Could not find acceptable representation``错误，产生这个的原因和之前**为何curl text/plain资源无法获得error**是一样的：无法将[@ExceptionHandler][spring-ExceptionHandler]返回的数据转换[@RequestMapping.produces][RequestMapping_produces]所要求的格式。
+注意上方表格的``Could not find acceptable representation``错误，产生这个的原因前面已经讲过。
+
+不过需要注意的是流程稍微有点不同，在前面的例子里的流程是这样的：
+
+1. 访问url
+1. 抛出异常
+1. forward到/error
+1. BasicErrorController.error方法返回的ResponseEntity没有办法转换成String
+
+本章节例子的异常是这样的：
+
+1. 访问url
+1. 抛出异常
+1. 被`@ExceptionHandler`处理
+1. AnotherException的`@ExceptionHander`返回的ResponseEntity没有办法转换成String，被算作没有被处理成功
+1. forward到 /error
+1. BasicErrorController.error方法返回的ResponseEntity没有办法转换成String
 
 所以你会发现如果使用[@ExceptionHandler][spring-ExceptionHandler]，那就得自己根据请求头``Accept``的不同而输出不同的结果了，办法就是定义一个``void @ExceptionHandler``，具体见[@ExceptionHandler javadoc][spring-ExceptionHandler-javadoc]。
 
@@ -227,7 +249,7 @@ Spring MVC处理异常的地方在[DispatcherServlet.processHandlerException][Di
 1. [ResponseStatusExceptionResolver][spring-ResponseStatusExceptionResolver-javadoc]，根据[@ResponseStatus][spring-ResponseStatus-javadoc] resolve
 1. [DefaultHandlerExceptionResolver][spring-DefaultHandlerExceptionResolver-javadoc]，负责处理Spring MVC标准异常
 
-``Exception403``和``Exception406``都有被[ResponseStatusExceptionResolver][spring-ResponseStatusExceptionResolver-javadoc]处理了，而``SomeException``没有任何Handler处理，这样``DispatcherServlet``就会将这个异常往上抛至到容器处理（见[DispatcherServlet#L1243][DispatcherServlet_L1243]），以Tomcat为例，它在[StandardHostValve#L317][StandardHostValve_L317]、[StandardHostValve#L345][StandardHostValve_L345]会将Status Code设置成500，然后跳转到`/error`，结果就是[BasicErrorController][BasicErrorController]处理时就看到Status Code=500，然后按照500去找error page找不到，就只能返回White error page了。
+``Exception403``和``Exception406``都有被[ResponseStatusExceptionResolver][spring-ResponseStatusExceptionResolver-javadoc]处理了，而``SomeException``没有任何Handler处理，这样``DispatcherServlet``就会将这个异常往上抛至到容器处理（见[DispatcherServlet#L1243][DispatcherServlet_L1243]），以Tomcat为例，它在[StandardHostValve#L317][StandardHostValve_L317]、[StandardHostValve#L345][StandardHostValve_L345]会将Status Code设置成500，然后forward到`/error`，结果就是[BasicErrorController][BasicErrorController]处理时就看到Status Code=500，然后按照500去找error page找不到，就只能返回White error page了。
 
 
 实际上，从Request的attributes角度来看，交给[BasicErrorController][BasicErrorController]处理时，和容器自己处理时，有几个相关属性的内部情况时这样的：
