@@ -180,7 +180,7 @@ org.springframework.web.HttpMediaTypeNotAcceptableException: Could not find acce
 
 1. 访问url
 1. 抛出异常
-1. forward到/error
+1. forward到 /error
 1. BasicErrorController.error方法返回的ResponseEntity没有办法转换成String
 
 本章节例子的异常是这样的：
