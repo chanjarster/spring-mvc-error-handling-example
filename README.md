@@ -51,11 +51,11 @@
 
 ### Spring MVC处理请求的总体流程
 
-![总体流程](doc/Spring MVC RequestMapping及异常处理流程/0 总体流程.png)
+![总体流程](doc/RequestMapping及异常处理流程/1-总体流程.png)
 
 ### 分析为何浏览器访问都`Whitelabel Error Page`
 
-![浏览器访问](doc/Spring MVC RequestMapping及异常处理流程/1.1 默认行为-浏览器.png)
+![浏览器访问](doc/RequestMapping及异常处理流程/2-默认行为-浏览器.png)
 
 ### 分析为何curl text/plain资源却没有返回结果
 
@@ -80,7 +80,7 @@ org.springframework.web.HttpMediaTypeNotAcceptableException: Could not find acce
 
 要理解这个异常是怎么来的，那我们来简单分析以下Spring MVC的处理过程：
 
-![curl访问](doc/Spring MVC RequestMapping及异常处理流程/1.2 默认行为-curl.png)
+![curl访问](doc/RequestMapping及异常处理流程/3-默认行为-curl.png)
 
 那么这个问题怎么解决呢？我会在*自定义ErrorController*里说明。
 
