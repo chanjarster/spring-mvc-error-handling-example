@@ -29,7 +29,7 @@
 
 会发现[FooController][def-foo]和[FooRestController][def-foo-rest]返回的结果都是一个`Whitelabel Error Page`也就是html。
 
-但是如果你使用`curl`访问上述地址，那么返回的都是如下的`json`：
+但是如果你使用`curl -i -s -X GET`访问上述地址，那么返回的都是如下的`json`：
 
 ```json
 {
@@ -120,7 +120,7 @@ org.springframework.web.HttpMediaTypeNotAcceptableException: Could not find acce
 
 在`ErrorMvcAutoConfiguration.errorAttributes`提供了[DefaultErrorAttributes][spring-DefaultErrorAttributes-javadoc]，我们也可以参照这个提供一个自己的[CustomErrorAttributes][boot-CustomErrorAttributes]覆盖掉它。
 
-如果使用curl访问相关地址可以看到，返回的json里的出了修改过的属性，还有添加的属性：
+如果使用`curl -i -s -X GET`访问相关地址可以看到，返回的json里的出了修改过的属性，还有添加的属性：
 
 ```json
 {
@@ -139,9 +139,9 @@ org.springframework.web.HttpMediaTypeNotAcceptableException: Could not find acce
 
 ## 自定义ErrorController
 
-在前面提到了`curl http://localhost:8080/return-text-plain`得不到error信息，解决这个问题有两个关键点：
+在前面提到了`curl -i -s -X GET http://localhost:8080/return-text-plain`得不到error信息，解决这个问题有两个关键点：
 
-1. 请求的时候指定`Accept`头，避免匹配到[BasicErrorController.error][BasicErrorController_error]方法。比如：`curl -H 'Accept: text/plain' http://localhost:8080/return-text-plain`
+1. 请求的时候指定`Accept`头，避免匹配到[BasicErrorController.error][BasicErrorController_error]方法。比如：`curl -i -s -X GET -H 'Accept: text/plain' http://localhost:8080/return-text-plain`
 1. 提供自定义的``ErrorController``提供一个`path=/error procudes=text/plain`的方法。
 
 其实还有另一种方式：提供一个Object->String转换的HttpMessageConverter，这个方法本文不展开。
@@ -165,7 +165,7 @@ org.springframework.web.HttpMediaTypeNotAcceptableException: Could not find acce
 
 在[BarController][boot-BarController]中，所有`*-a`都抛出``SomeException``，所有`*-b`都抛出``AnotherException``。下面是用浏览器和curl访问的结果：
 
-| url                                    | Browser                                  | curl               |
+| url                                    | Browser                                  | curl -i -s -X GET  |
 | -------------------------------------- |------------------------------------------| -------------------|
 | http://localhost:8080/bar/html-a       | some-ex-error.html                       | some-ex-error.html |
 | http://localhost:8080/bar/html-b       | error(json)                              | error(json)        |
@@ -269,7 +269,8 @@ PS. `DispatcherServlet.EXCEPTION` = `org.springframework.web.servlet.DispatcherS
 1. 给``SomeException``添加``@ResponseStatus``，但是这个方法有两个局限：
     1. 如果这个异常不是你能修改的，比如在第三方的Jar包里
     1. 如果``@ResponseStatus``使用[HttpStatus][HttpStatus-javadoc]作为参数，但是这个枚举定义的Status Code数量有限
-1. 使用[@ExceptionHandler][spring-ExceptionHandler]，不过得注意自己决定view以及status code
+1. 使用[@ExceptionHandler][spring-ExceptionHandler]，不过得注意自己决定view以及status code。
+   这个办法很麻烦，因为你得小心的处理请求头里的`Accept`，以此返回相应的结果，并且因为它的处理方式脱离了框架，容易造成返回信息不一致。
 
 
 第二种解决办法的例子`loo/error-601`，对应的代码：
@@ -289,6 +290,23 @@ String handleAnotherException(HttpServletRequest request, HttpServletResponse re
   return "error/6xx";
 }
 ```
+
+补充：从Spring Framework 5.0开始，提供了`ResponseStatusException`，你可以直接在抛出异常处定义Status Code、Reason，能够很好的解决第三方Jar包的问题。用法类似于这样：
+
+```java
+@PutMapping("/actor/{id}/{name}")
+public String updateActorName(
+  @PathVariable("id") int id, 
+  @PathVariable("name") String name) {
+  
+    try {
+        return actorService.updateActor(id, name);
+    } catch (ActorNotFoundException ex) {
+        throw new ResponseStatusException(
+          HttpStatus.BAD_REQUEST, "Provide correct Actor Id", ex);
+    }
+}
+```	
 
 总结：
 
@@ -333,6 +351,21 @@ public class SomeExceptionErrorViewResolver implements ErrorViewResolver {
 1. ``@ExceptionHandler``配合``@ControllerAdvice``用时，能够应用到所有被``@ControllerAdvice``切到的Controller
 2. ``@ExceptionHandler``在Controller里的时候，就只会对那个Controller生效
 
+## 最佳实践
+
+前面讲了那么多种方式，那么在Spring MVC中处理异常的最佳实践是什么？在回答这个问题前我先给出一个好的异常处理应该是什么样子的：
+
+1. 返回的异常信息能够适配各种`Accept`，比如`Accept:text/html`返回html页面，`Accept:application/json`返回json。
+1. 统一的异常信息schema，且可自定义，比如只包含`timestamp`、`error`、`message`等信息。
+1. 能够自定义部分信息，比如可以自定义`error`、`message`的内容。
+
+要达成以上目标我们可以采取的方法：
+
+1. 达成第1条：自定义`ErrorController`，扩展`BasicErrorController`，支持更多的`Accept`类型。
+1. 达成第2条：自定义`ErrorAttributes`
+1. 达成第3条：
+   1. 使用`@ResponseStatus`或`ResponseStatusException`(since 5.0)
+   2. 前一种方式不适用时，自定义`ErrorAttributes`，在里面写代码，针对特定异常返回特定信息。推荐使用配置的方式来做，比如配置文件里写XXXException的message是YYYY。
 
 ## 附录I
 
