@@ -367,6 +367,24 @@ public class SomeExceptionErrorViewResolver implements ErrorViewResolver {
    1. 使用`@ResponseStatus`或`ResponseStatusException`(since 5.0)
    2. 前一种方式不适用时，自定义`ErrorAttributes`，在里面写代码，针对特定异常返回特定信息。推荐使用配置的方式来做，比如配置文件里写XXXException的message是YYYY。
 
+Spring MVC对于从Controller抛出的异常是不打印到console的，解决办法是提供一个`HandlerExceptionResolver`，比如这样：
+
+```
+@Order(Ordered.HIGHEST_PRECEDENCE)
+public class ErrorLogger implements HandlerExceptionResolver {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(ErrorLogger.class);
+
+  @Override
+  public ModelAndView resolveException(HttpServletRequest request, HttpServletResponse response, Object handler,
+      Exception ex) {
+    LOGGER.error("Exception happened at [{}]: {}", request.getRequestURI(), ExceptionUtils.getStackTrace(ex));
+    return null;
+  }
+
+}
+```
+
 ## 附录I
 
 下表列出哪些特性是Spring Boot的，哪些是Spring MVC的：
